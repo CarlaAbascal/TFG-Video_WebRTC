@@ -1,0 +1,41 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>WebRTC Streaming</title>
+</head>
+<body>
+    <h2>WebRTC Streaming - Prueba </h2>
+    <video id="remoteVideo" autoplay playsinline controls></video>h
+
+    <script>
+        const pc = new RTCPeerConnection();
+
+        // fuerza a Chrome a decir “Quiero recibir vídeo”
+        pc.addTransceiver("video", { direction: "recvonly" });
+
+        pc.ontrack = (e) => {
+            document.getElementById("remoteVideo").srcObject = e.streams[0];
+        };
+
+        async function start() {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            const response = await fetch("/offer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    sdp: offer.sdp,
+                    type: offer.type,
+                }),
+            });
+
+            const answer = await response.json();
+            await pc.setRemoteDescription(answer);
+        }
+
+        start().catch(console.error);
+    </script>
+</body>
+</html>
