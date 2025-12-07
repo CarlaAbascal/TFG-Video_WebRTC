@@ -1,41 +1,85 @@
 ﻿<!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
     <meta charset="utf-8" />
-    <title>WebRTC Streaming</title>
+    <title>Viewer WebRTC</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #111;
+            color: #eee;
+            text-align: center;
+        }
+
+        video {
+            width: 90vw;
+            max-width: 800px;
+            margin-top: 20px;
+            background: #000;
+        }
+
+        #status {
+            margin-top: 10px;
+        }
+    </style>
 </head>
+
 <body>
-    <h2>WebRTC Streaming - Prueba </h2>
-    <video id="remoteVideo" autoplay playsinline controls></video>h
+    <h2>Streaming video -- Prueba</h2>
+    <p id="status">Estado: inicializando...</p>
+    <video id="remoteVideo" autoplay playsinline controls></video>
 
     <script>
         const pc = new RTCPeerConnection();
 
-        // fuerza a Chrome a decir “Quiero recibir vídeo”
+        // ESTA LÍNEA ES IMPRESCINDIBLE:
+        // Le dice a Chrome "quiero recibir vídeo"
         pc.addTransceiver("video", { direction: "recvonly" });
 
-        pc.ontrack = (e) => {
-            document.getElementById("remoteVideo").srcObject = e.streams[0];
+        pc.ontrack = (event) => {
+            console.log("Track recibido", event);
+            document.getElementById("remoteVideo").srcObject = event.streams[0];
+            document.getElementById("status").textContent = "Estado: recibiendo vídeo";
+        };
+
+        pc.oniceconnectionstatechange = () => {
+            console.log("ICE state:", pc.iceConnectionState);
         };
 
         async function start() {
+            document.getElementById("status").textContent = "Esperando video (Hacer click al Play)";
+
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
-            const response = await fetch("/offer", {
+            const response = await fetch("/viewer_offer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    sdp: offer.sdp,
-                    type: offer.type,
+                    sdp: pc.localDescription.sdp,
+                    type: pc.localDescription.type,
                 }),
             });
 
+            if (!response.ok) {
+                const text = await response.text();
+                document.getElementById("status").textContent =
+                    "Error desde el servidor: " + text;
+                throw new Error(text);
+            }
+
             const answer = await response.json();
             await pc.setRemoteDescription(answer);
+
+            document.getElementById("status").textContent =
+                "Conectado - Video en streaming";
         }
 
-        start().catch(console.error);
+        start().catch(err => {
+            console.error(err);
+            document.getElementById("status").textContent = "Error: " + err;
+        });
     </script>
+
 </body>
 </html>

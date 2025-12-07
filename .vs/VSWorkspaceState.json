@@ -2,8 +2,9 @@
   "ExpandedNodes": [
     "",
     "\\feature-webrtc",
-    "\\WindowsFormsApp1"
+    "\\WindowsFormsApp1",
+    "\\WindowsFormsApp1\\WindowsFormsApp1"
   ],
-  "SelectedNode": "\\WindowsFormsApp1\\WindowsFormsApp1",
+  "SelectedNode": "\\feature-webrtc\\script_publisher.py",
   "PreviewInSolutionExplorer": false
 }
