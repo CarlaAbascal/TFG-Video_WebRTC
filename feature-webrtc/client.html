@@ -2,53 +2,133 @@
 <html lang="es">
 <head>
     <meta charset="utf-8" />
-    <title>Viewer WebRTC</title>
+    <title>WebRTC Viewer</title>
+
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            font-family: "Segoe UI", Tahoma, sans-serif;
+            color: #eaeaea;
+        }
+
+        .app {
             background: #111;
-            color: #eee;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            max-width: 900px;
+            width: 95%;
             text-align: center;
         }
 
-        video {
-            width: 90vw;
-            max-width: 800px;
-            margin-top: 20px;
-            background: #000;
+        h2 {
+            margin: 0 0 10px;
+            font-weight: 500;
         }
 
         #status {
-            margin-top: 10px;
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 12px;
+        }
+
+        video {
+            width: 100%;
+            max-height: 480px;
+            background: #000;
+            border-radius: 8px;
+        }
+
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #1f6feb;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s, box-shadow 0.1s;
+            min-width: 160px;
+        }
+
+            button:hover:not(:disabled) {
+                background: #388bfd;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 10px rgba(56, 139, 253, 0.4);
+            }
+
+            button:active:not(:disabled) {
+                transform: translateY(0);
+                box-shadow: none;
+            }
+
+            button:disabled {
+                background: #444;
+                cursor: not-allowed;
+                opacity: 0.6;
+            }
+
+        footer {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #777;
         }
     </style>
 </head>
 
 <body>
-    <h2>Streaming video -- Prueba</h2>
-    <p id="status">Estado: inicializando...</p>
-    <video id="remoteVideo" autoplay playsinline controls></video>
+    <div class="app">
+        <h2>Streaming WebRTC</h2>
+        <div id="status">Inicializando...</div>
+
+        <video id="remoteVideo" autoplay muted playsinline controls></video>
+
+        <div class="controls">
+            <button id="btnSnapshot" disabled>Capturar imagen</button>
+            <button id="btnRecord5s" disabled>Grabar vídeo (5 s)</button>
+        </div>
+
+
+    </div>
 
     <script>
         const pc = new RTCPeerConnection();
-
-        // ESTA LÍNEA ES IMPRESCINDIBLE:
-        // Le dice a Chrome "quiero recibir vídeo"
         pc.addTransceiver("video", { direction: "recvonly" });
 
-        pc.ontrack = (event) => {
-            console.log("Track recibido", event);
-            document.getElementById("remoteVideo").srcObject = event.streams[0];
-            document.getElementById("status").textContent = "Estado: recibiendo vídeo";
-        };
+        const videoEl = document.getElementById("remoteVideo");
+        const statusEl = document.getElementById("status");
+        const btnSnapshot = document.getElementById("btnSnapshot");
+        const btnRecord5s = document.getElementById("btnRecord5s");
 
-        pc.oniceconnectionstatechange = () => {
-            console.log("ICE state:", pc.iceConnectionState);
+        let remoteStream = null;
+
+        pc.ontrack = (event) => {
+            remoteStream = event.streams[0];
+            videoEl.srcObject = remoteStream;
+
+            statusEl.textContent = "Conectado. Recibiendo vídeo";
+            btnSnapshot.disabled = false;
+            btnRecord5s.disabled = false;
         };
 
         async function start() {
-            document.getElementById("status").textContent = "Esperando video (Hacer click al Play)";
-
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 
@@ -61,25 +141,65 @@
                 }),
             });
 
-            if (!response.ok) {
-                const text = await response.text();
-                document.getElementById("status").textContent =
-                    "Error desde el servidor: " + text;
-                throw new Error(text);
-            }
-
             const answer = await response.json();
             await pc.setRemoteDescription(answer);
-
-            document.getElementById("status").textContent =
-                "Conectado - Video en streaming";
         }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        function timestampName(prefix, ext) {
+            const d = new Date();
+            const pad = n => String(n).padStart(2, "0");
+            return `${prefix}_${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}.${ext}`;
+        }
+
+        btnSnapshot.addEventListener("click", () => {
+            if (!videoEl.videoWidth) return;
+
+            const canvas = document.createElement("canvas");
+            canvas.width = videoEl.videoWidth;
+            canvas.height = videoEl.videoHeight;
+            canvas.getContext("2d").drawImage(videoEl, 0, 0);
+
+            canvas.toBlob(blob => {
+                if (blob) downloadBlob(blob, timestampName("captura", "jpg"));
+            }, "image/jpeg", 0.92);
+        });
+
+        btnRecord5s.addEventListener("click", () => {
+            if (!remoteStream) return;
+
+            btnRecord5s.disabled = true;
+            statusEl.textContent = "Grabando vídeo (5 s)...";
+
+            const recorder = new MediaRecorder(remoteStream);
+            const chunks = [];
+
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: "video/webm" });
+                downloadBlob(blob, timestampName("video", "webm"));
+                statusEl.textContent = "Grabación finalizada";
+                btnRecord5s.disabled = false;
+            };
+
+            recorder.start();
+            setTimeout(() => recorder.stop(), 5000);
+        });
 
         start().catch(err => {
             console.error(err);
-            document.getElementById("status").textContent = "Error: " + err;
+            statusEl.textContent = "Error de conexión";
         });
     </script>
-
 </body>
 </html>

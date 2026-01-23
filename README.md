@@ -2,23 +2,31 @@
 
 
 
+-------Versión 1.4----------
+
+Botones de captura(JPG) y video de 5seg (webm) añadidos y funcionando
+
+
+
+
+
 -------Versión 1.3----------
 
 
 
-Streaming desde Script -> Server -> Navegador 
+Streaming desde Script -> Server -> Navegador
 
 
 
 Creación script\_publisher.py
 
-Actualización de client.html y server.py 
+Actualización de client.html y server.py
 
 
 
-Ejecutar en este orden: 
+Ejecutar en este orden:
 
-1º server.py 
+1º server.py
 
 2º script\_publisher.py
 
@@ -59,6 +67,4 @@ Se muestra video en streaming
 
 
 Clon del repo TFG-Reconocimiento de objetos2
-
-
 

@@ -1,0 +1,9 @@
+# Visual Studio
+.vs/
+bin/
+obj/
+
+# User-specific files
+*.suo
+*.user
+*.db
